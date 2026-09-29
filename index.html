@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google Suggest Explorer</title>
+<style>
+  :root{
+    --bg:#faf9f5;
+    --ink:#1c2521;
+    --line:#dcd8cc;
+    --accent:#2f6f5e;
+    --accent-dim:#e4efec;
+    --muted:#6b6f68;
+    --card:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height:1.5;
+  }
+  .mono{font-family: 'SFMono-Regular', Consolas, Menlo, monospace;}
+  header{
+    padding:32px 24px 20px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{
+    font-size:26px;
+    margin:0 0 6px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:14px;
+    max-width:640px;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px 60px;}
+  .tabs{
+    display:flex;
+    gap:2px;
+    margin:24px 0 0;
+    border-bottom:1px solid var(--line);
+  }
+  .tab{
+    font-family:inherit;
+    font-size:14px;
+    background:none;
+    border:none;
+    padding:10px 4px;
+    margin-right:24px;
+    color:var(--muted);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+  }
+  .tab.active{
+    color:var(--ink);
+    border-bottom-color:var(--accent);
+    font-weight:600;
+  }
+  .panel{display:none;padding-top:20px;}
+  .panel.active{display:block;}
+  input[type=text], textarea{
+    width:100%;
+    font-family: inherit;
+    font-size:15px;
+    padding:11px 14px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--card);
+    color:var(--ink);
+  }
+  textarea{font-family:'SFMono-Regular', Consolas, Menlo, monospace; font-size:13px; min-height:110px; resize:vertical;}
+  input:focus, textarea:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .row{display:flex; gap:10px; align-items:center;}
+  button.primary{
+    font-family:inherit;
+    font-size:14px;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:11px 18px;
+    border-radius:4px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  button.primary:hover{background:#265a4c;}
+  button.primary:disabled{background:#a9b8b3; cursor:default;}
+  button.ghost{
+    font-family:inherit;
+    font-size:13px;
+    background:none;
+    border:1px solid var(--line);
+    padding:8px 14px;
+    border-radius:4px;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  button.ghost:hover{background:var(--accent-dim); border-color:var(--accent);}
+  ul.suggest{
+    list-style:none; margin:14px 0 0; padding:0;
+    border:1px solid var(--line); border-radius:4px; overflow:hidden;
+  }
+  ul.suggest li{
+    padding:11px 14px;
+    font-family:'SFMono-Regular', Consolas, Menlo, monospace;
+    font-size:14px;
+    border-bottom:1px solid var(--line);
+    background:var(--card);
+  }
+  ul.suggest li:last-child{border-bottom:none;}
+  ul.suggest li:hover{background:var(--accent-dim);}
+  .empty{color:var(--muted); font-size:13px; margin-top:14px;}
+  .status{font-size:12px; color:var(--muted); margin-top:8px; min-height:16px;}
+  table{width:100%; border-collapse:collapse; margin-top:18px; font-size:13px;}
+  th, td{
+    text-align:left; padding:8px 10px;
+    border-bottom:1px solid var(--line);
+    font-family:'SFMono-Regular', Consolas, Menlo, monospace;
+  }
+  th{
+    color:var(--muted); font-weight:600; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.04em;
+    border-bottom:1px solid var(--ink);
+  }
+  tr:hover td{background:var(--accent-dim);}
+  .toolbar{display:flex; justify-content:space-between; align-items:center; margin-top:16px; flex-wrap:wrap; gap:8px;}
+  .note{
+    margin-top:28px; padding:14px 16px;
+    background:var(--accent-dim); border-radius:4px;
+    font-size:12.5px; color:#33463f; font-family: Georgia, serif;
+  }
+  .note b{color:var(--ink);}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding:0;">
+    <h1>Google Suggest Explorer</h1>
+    <p>একটা বা অনেকগুলো seed keyword দিন — সরাসরি Google-এর autocomplete থেকে real-time suggestion বের করবে। এখানে কোনো search volume নেই, শুধু Google মানুষকে যা suggest করে সেটাই দেখায়।</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-tab="single">এক-এক করে</button>
+    <button class="tab" data-tab="batch">Batch (অনেকগুলো একসাথে)</button>
+  </div>
+
+  <div class="panel active" id="panel-single">
+    <input type="text" id="singleInput" placeholder="যেমন: ai for seo" autocomplete="off">
+    <div class="status" id="singleStatus"></div>
+    <ul class="suggest" id="singleResults" style="display:none;"></ul>
+    <div class="empty" id="singleEmpty">টাইপ শুরু করুন, suggestion এখানে আসবে।</div>
+  </div>
+
+  <div class="panel" id="panel-batch">
+    <textarea id="batchInput" placeholder="এক লাইনে একটা করে keyword দিন, যেমন:&#10;ai for seo&#10;ai for teachers&#10;ai for accountants"></textarea>
+    <div class="row" style="margin-top:10px;">
+      <button class="primary" id="runBatch">সব keyword-এর suggestion আনো</button>
+      <span class="status" id="batchStatus"></span>
+    </div>
+    <div class="toolbar" id="batchToolbar" style="display:none;">
+      <span class="status" id="batchCount"></span>
+      <button class="ghost" id="downloadCsv">CSV ডাউনলোড করুন</button>
+    </div>
+    <table id="batchTable" style="display:none;">
+      <thead><tr><th>Seed Keyword</th><th>Suggestion</th></tr></thead>
+      <tbody id="batchBody"></tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>জেনে রাখুন:</b> এটা Google-এর একটা অফিসিয়াল/ডকুমেন্টেড API না — এটা সেই একই সোর্স যেটা browser-এর সার্চ বক্সে suggestion দেখায়। Google যেকোনো সময় এই আচরণ বদলাতে বা ব্লক করতে পারে। যদি কোনো keyword-এ ফলাফল না আসে বা error দেখায়, একটু পরে আবার চেষ্টা করুন বা সরাসরি Google-এ গিয়ে ম্যানুয়ালি চেক করুন।
+  </div>
+</div>
+
+<script>
+const tabs = document.querySelectorAll('.tab');
+const panels = { single: document.getElementById('panel-single'), batch: document.getElementById('panel-batch') };
+tabs.forEach(t => t.addEventListener('click', () => {
+  tabs.forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  Object.values(panels).forEach(p => p.classList.remove('active'));
+  panels[t.dataset.tab].classList.add('active');
+}));
+
+async function fetchSuggestions(query) {
+  const url = `https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('network');
+  const data = await res.json();
+  return Array.isArray(data[1]) ? data[1] : [];
+}
+
+// --- Single mode ---
+const singleInput = document.getElementById('singleInput');
+const singleResults = document.getElementById('singleResults');
+const singleEmpty = document.getElementById('singleEmpty');
+const singleStatus = document.getElementById('singleStatus');
+let debounceTimer = null;
+
+singleInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const q = singleInput.value.trim();
+  if (!q) {
+    singleResults.style.display = 'none';
+    singleEmpty.style.display = 'block';
+    singleEmpty.textContent = 'টাইপ শুরু করুন, suggestion এখানে আসবে।';
+    singleStatus.textContent = '';
+    return;
+  }
+  debounceTimer = setTimeout(async () => {
+    singleStatus.textContent = 'খোঁজা হচ্ছে...';
+    try {
+      const suggestions = await fetchSuggestions(q);
+      singleStatus.textContent = '';
+      if (suggestions.length === 0) {
+        singleResults.style.display = 'none';
+        singleEmpty.style.display = 'block';
+        singleEmpty.textContent = 'কোনো suggestion পাওয়া যায়নি।';
+        return;
+      }
+      singleEmpty.style.display = 'none';
+      singleResults.style.display = 'block';
+      singleResults.innerHTML = suggestions.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+    } catch (e) {
+      singleStatus.textContent = 'সংযোগে সমস্যা হয়েছে — একটু পরে চেষ্টা করুন।';
+    }
+  }, 350);
+});
+
+// --- Batch mode ---
+const runBatch = document.getElementById('runBatch');
+const batchInput = document.getElementById('batchInput');
+const batchStatus = document.getElementById('batchStatus');
+const batchTable = document.getElementById('batchTable');
+const batchBody = document.getElementById('batchBody');
+const batchToolbar = document.getElementById('batchToolbar');
+const batchCount = document.getElementById('batchCount');
+const downloadCsv = document.getElementById('downloadCsv');
+let lastRows = [];
+
+runBatch.addEventListener('click', async () => {
+  const seeds = batchInput.value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (seeds.length === 0) return;
+  runBatch.disabled = true;
+  batchBody.innerHTML = '';
+  lastRows = [];
+  batchTable.style.display = 'table';
+  batchToolbar.style.display = 'none';
+
+  for (let i = 0; i < seeds.length; i++) {
+    batchStatus.textContent = `(${i + 1}/${seeds.length}) "${seeds[i]}" চেক হচ্ছে...`;
+    try {
+      const suggestions = await fetchSuggestions(seeds[i]);
+      if (suggestions.length === 0) {
+        appendRow(seeds[i], '(কোনো suggestion নেই)');
+      } else {
+        suggestions.forEach(s => appendRow(seeds[i], s));
+      }
+    } catch (e) {
+      appendRow(seeds[i], '(error - পরে আবার চেষ্টা করুন)');
+    }
+    // Google-কে বার বার দ্রুত hit না করার জন্য সামান্য বিরতি
+    await new Promise(r => setTimeout(r, 250));
+  }
+  batchStatus.textContent = `সম্পন্ন — ${lastRows.length}টা সারি পাওয়া গেছে।`;
+  batchCount.textContent = `মোট ${lastRows.length}টা suggestion`;
+  batchToolbar.style.display = 'flex';
+  runBatch.disabled = false;
+});
+
+function appendRow(seed, suggestion) {
+  lastRows.push([seed, suggestion]);
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${escapeHtml(seed)}</td><td>${escapeHtml(suggestion)}</td>`;
+  batchBody.appendChild(tr);
+}
+
+downloadCsv.addEventListener('click', () => {
+  if (lastRows.length === 0) return;
+  const header = 'Seed Keyword,Suggestion\n';
+  const csv = header + lastRows.map(r => r.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'google_suggestions.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+function csvEscape(v) {
+  const s = String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
